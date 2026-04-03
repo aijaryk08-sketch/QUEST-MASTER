@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IT QUEST - Билим Жарышы</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Montserrat:wght@300;400;600;800&display=swap');
+        
+        :root {
+            --primary: #3b82f6;
+            --accent: #fbbf24;
+            --bg: #020617;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: var(--bg);
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .cyber-card {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+        }
+
+        .active-player-glow {
+            border: 2px solid var(--accent) !important;
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+        }
+
+        .title-font { font-family: 'Orbitron', sans-serif; }
+
+        .btn-gradient {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            transition: all 0.3s ease;
+        }
+
+        .correct-ans { background: #059669 !important; border-color: #34d399 !important; animation: pulse 0.4s ease; }
+        .wrong-ans { background: #b91c1c !important; border-color: #f87171 !important; animation: shake 0.4s ease; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        @keyframes pulse {
+            50% { transform: scale(1.05); }
+        }
+
+        .timer-low { color: #ff4757 !important; animation: blink 0.8s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center">
+
+    <!-- Setup Screen -->
+    <div id="setupScreen" class="fixed inset-0 z-[500] bg-slate-950 flex items-center justify-center p-4">
+        <div class="max-w-2xl w-full cyber-card p-8 md:p-12 rounded-[2.5rem] text-center border-t-8 border-blue-600">
+            <h1 class="text-5xl font-black title-font mb-2 bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">QUEST MASTER</h1>
+            <p class="text-gray-400 mb-10 text-sm tracking-widest uppercase">Деңгээлди жана оюнчуларды тандаңыз</p>
+            
+            <div class="grid grid-cols-2 gap-4 mb-8">
+                <button onclick="setGameLevel('junior')" id="lvlJunior" class="p-4 rounded-2xl border-2 border-slate-700 bg-slate-800/50 transition-all">
+                    <span class="block text-xl mb-1">🐣</span>
+                    <span class="font-bold text-sm uppercase">1-5 Класстар</span>
+                </button>
+                <button onclick="setGameLevel('senior')" id="lvlSenior" class="p-4 rounded-2xl border-2 border-blue-500 bg-blue-500/20 transition-all">
+                    <span class="block text-xl mb-1">🎓</span>
+                    <span class="font-bold text-sm uppercase">6-11 Класстар</span>
+                </button>
+            </div>
+
+            <div class="mb-8">
+                <p class="text-xs font-bold text-gray-500 uppercase mb-4">Оюнчулардын саны:</p>
+                <div id="playerCountBtns" class="flex justify-center gap-2">
+                    <button onclick="createPlayerInputs(1)" class="p-btn w-12 h-12 rounded-xl bg-blue-600 border border-blue-500 font-black">1</button>
+                    <button onclick="createPlayerInputs(2)" class="p-btn w-12 h-12 rounded-xl bg-slate-800 border border-white/10 font-black">2</button>
+                    <button onclick="createPlayerInputs(3)" class="p-btn w-12 h-12 rounded-xl bg-slate-800 border border-white/10 font-black">3</button>
+                    <button onclick="createPlayerInputs(4)" class="p-btn w-12 h-12 rounded-xl bg-slate-800 border border-white/10 font-black">4</button>
+                </div>
+            </div>
+
+            <div id="playerInputs" class="space-y-3 mb-10">
+                <input type="text" id="pName1" placeholder="1-оюнчунун аты" class="w-full p-4 rounded-xl bg-slate-900 border border-white/10 outline-none focus:border-blue-500 font-bold text-white">
+            </div>
+
+            <button onclick="startGame()" class="w-full py-5 btn-gradient rounded-2xl font-black title-font text-lg uppercase tracking-widest">Баштоо</button>
+        </div>
+    </div>
+
+    <!-- Game UI -->
+    <div id="gameUI" class="hidden w-full max-w-7xl px-4 py-8">
+        <header class="flex flex-col md:flex-row justify-between items-center gap-6 mb-10">
+            <div class="text-center md:text-left">
+                <div class="flex items-center gap-3">
+                    <span id="badgeLevel" class="bg-blue-600 text-[10px] px-2 py-1 rounded-md font-bold uppercase">SENIOR</span>
+                    <h2 class="text-3xl font-black title-font">QUEST <span class="text-blue-500">PRO</span></h2>
+                </div>
+            </div>
+            <div id="scoreboard" class="flex gap-4 overflow-x-auto pb-2"></div>
+        </header>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+            <div class="cyber-card p-5 rounded-2xl border-l-4 border-yellow-500">
+                <p class="text-[10px] text-gray-400 font-bold uppercase">Азыркы кезек:</p>
+                <p id="activePlayerName" class="text-xl font-black text-yellow-500">-</p>
+            </div>
+            <div class="cyber-card p-5 rounded-2xl border-l-4 border-emerald-500">
+                <p class="text-[10px] text-gray-400 font-bold uppercase">Убакыт:</p>
+                <p class="text-xl font-black text-emerald-400">60 сек</p>
+            </div>
+        </div>
+
+        <div id="subjectsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+    </div>
+
+    <!-- Question Modal -->
+    <div id="questModal" class="fixed inset-0 bg-slate-950/95 z-[1000] hidden flex items-center justify-center p-4 backdrop-blur-md">
+        <div class="max-w-3xl w-full cyber-card p-8 md:p-12 rounded-[3rem] relative">
+            <div id="timerProgress" class="absolute top-0 left-0 h-2 bg-blue-500 transition-all duration-1000 w-full"></div>
+            <div class="flex justify-between items-center mb-8">
+                <span id="qCategory" class="px-4 py-1 bg-blue-900/40 text-blue-300 rounded-lg text-xs font-bold uppercase">САБАК</span>
+                <div id="qTimer" class="w-14 h-14 flex items-center justify-center rounded-xl border-2 border-blue-500 text-blue-400 font-black text-2xl">60</div>
+            </div>
+            <h3 id="qText" class="text-2xl md:text-3xl font-bold mb-10 leading-snug">Суроо...</h3>
+            <div id="qOptions" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div id="resultModal" class="fixed inset-0 bg-slate-950 z-[2000] hidden flex flex-col items-center justify-center p-6">
+        <h2 class="text-5xl font-black title-font mb-10 text-white uppercase italic">Жыйынтык</h2>
+        <div id="finalRankings" class="w-full max-w-md space-y-4 mb-10"></div>
+        <button onclick="location.reload()" class="px-10 py-4 btn-gradient rounded-xl font-bold uppercase">Кайра баштоо</button>
+    </div>
+
+    <script>
+        const juniorData = {
+            1: { name: "Математика", icon: "➕", color: "from-blue-600 to-cyan-500", list: [
+                {q: "2 + 2 * 2 канча?", a: ["8", "6", "4", "2"], c: 1},
+                {q: "Бир саатта канча мүнөт бар?", a: ["30", "50", "60", "100"], c: 2},
+                {q: "Эң кичине эки орундуу сан?", a: ["1", "10", "11", "99"], c: 1},
+                {q: "Квадраттын канча жагы бар?", a: ["3", "4", "5", "6"], c: 1},
+                {q: "15 - 7 канчага барабар?", a: ["6", "7", "8", "9"], c: 2},
+                {q: "Үч бурчтуктун канча бурчу бар?", a: ["2", "3", "4", "5"], c: 1},
+                {q: "10 * 10 канча болот?", a: ["20", "100", "1000", "50"], c: 1},
+                {q: "Бир килограммда канча грамм бар?", a: ["100", "500", "1000", "10"], c: 2},
+                {q: "24тү 2ге бөлсө канча чыгат?", a: ["10", "12", "14", "22"], c: 1},
+                {q: "5тин квадраты канча?", a: ["10", "20", "25", "50"], c: 2}
+            ]},
+            2: { name: "Кыргыз Тили", icon: "🇰🇬", color: "from-red-600 to-rose-500", list: [
+                {q: "Алфавитте канча тамга бар?", a: ["32", "36", "39", "42"], c: 1},
+                {q: "Зат атоочтун суроолору?", a: ["Ким? Эмне?", "Кандай?", "Качан?", "Канча?"], c: 0},
+                {q: "Кыргыз тилинде канча үндүү тамга бар?", a: ["8", "10", "12", "14"], c: 2}
+            ]}
+        };
+
+        const seniorData = {
+            1: { name: "Алгебра", icon: "🔢", color: "from-blue-800 to-indigo-900", list: [
+                {q: "sin²x + cos²x эмнеге барабар?", a: ["0", "1", "tg x", "sin 2x"], c: 1},
+                {q: "x² - 9 = 0 теңдемесинин тамырлары?", a: ["3", "±3", "9", "0"], c: 1},
+                {q: "log₂8 канчага барабар?", a: ["2", "3", "4", "1"], c: 1},
+                {q: "Пи санынын болжолдуу мааниси?", a: ["3.12", "3.14", "2.71", "1.61"], c: 1},
+                {q: "3! (үч факториал) канчага барабар?", a: ["3", "6", "9", "12"], c: 1},
+                {q: "Дискриминанттын формуласы?", a: ["b² - 4ac", "b + 4ac", "-b/2a", "2a/b"], c: 0},
+                {q: "Сандын нөлүнчү даражасы канча болот?", a: ["0", "1", "Ошол сан", "Белгисиз"], c: 1},
+                {q: "2⁵ канча болот?", a: ["10", "25", "32", "64"], c: 2},
+                {q: "tg x эмнеге барабар?", a: ["sin x / cos x", "cos x / sin x", "1 / sin x", "sin x * cos x"], c: 0},
+                {q: "Арифметикалык прогрессиянын n-мүчөсү?", a: ["a1 + (n-1)d", "a1 * q", "a1 + d", "n/2"], c: 0},
+                {q: "Логарифмдин негизи 10 болсо?", a: ["Натуралдык", "Ондук", "Бинардык", "Жөнөкөй"], c: 1},
+                {q: "x² + 2x + 1 = 0 тамыры?", a: ["1", "-1", "0", "2"], c: 1},
+                {q: "Комплекстик сан i²?", a: ["1", "-1", "0", "i"], c: 1},
+                {q: "Интеграл белгиси ким тарабынан киргизилген?", a: ["Ньютон", "Лейбниц", "Гаусс", "Эйлер"], c: 1},
+                {q: "4түн кубу канча?", a: ["16", "32", "64", "12"], c: 2},
+                {q: "Бир мүчөнүн даражасы?", a: ["Сумма", "Көбөйтүндү", "Эң чоң", "0"], c: 0},
+                {q: "Квадраттык функциянын графиги?", a: ["Түз", "Парабола", "Гипербола", "Айлана"], c: 1},
+                {q: "x - 5 = 10 болсо x?", a: ["5", "10", "15", "-15"], c: 2},
+                {q: "Жөнөкөй сан кайсы?", a: ["4", "6", "7", "9"], c: 2},
+                {q: "log₁₀100 канча?", a: ["1", "2", "3", "10"], c: 1}
+            ]},
+            2: { name: "Физика", icon: "⚡", color: "from-yellow-600 to-orange-700", list: [
+                {q: "Жарыктын ылдамдыгы (км/с)?", a: ["150,000", "300,000", "500,000", "1,000,000"], c: 1},
+                {q: "Ньютондун 2-закону?", a: ["F=ma", "E=mc2", "P=mv", "V=IR"], c: 0},
+                {q: "Электр чыңалуу бирдиги?", a: ["Ампер", "Вольт", "Ом", "Ватт"], c: 1},
+                {q: "g турактуусунун мааниси?", a: ["9.8", "10.5", "8.0", "11"], c: 0},
+                {q: "Ток күчү бирдиги?", a: ["Вольт", "Ампер", "Ом", "Ватт"], c: 1},
+                {q: "Жумуштун бирдиги?", a: ["Ньютон", "Джоуль", "Ватт", "Паскаль"], c: 1},
+                {q: "Күчтү өлчөөчү курал?", a: ["Тараза", "Динамометр", "Спидометр", "Барометр"], c: 1},
+                {q: "Заттын тыгыздыгы?", a: ["m/V", "m*V", "V/m", "F/A"], c: 0},
+                {q: "Басым бирдиги?", a: ["Ньютон", "Паскаль", "Джоуль", "Ватт"], c: 1},
+                {q: "Оптика эмнени изилдейт?", a: ["Үндү", "Жарыкты", "Токту", "Жылуулукту"], c: 1},
+                {q: "Эң жогорку ылдамдык?", a: ["Үн", "Жарык", "Шамал", "Ракета"], c: 1},
+                {q: "Магнит талаасы бирдиги?", a: ["Тесла", "Фарадей", "Генри", "Вебер"], c: 0},
+                {q: "Линзанын түрлөрү?", a: ["Топтоочу", "Түз", "Кыйшык", "Жөнөкөй"], c: 0},
+                {q: "Атомдун ядросунда?", a: ["Электрон", "Протон/Нейтрон", "Позитрон", "Фотон"], c: 1},
+                {q: "Дифракция деген эмне?", a: ["Сынуу", "Айланып өтүү", "Жутулуу", "Чагылуу"], c: 1},
+                {q: "Радиону ким ойлоп тапкан?", a: ["Эдисон", "Попов", "Ньютон", "Тесла"], c: 1},
+                {q: "Энергия сакталуу закону?", a: ["Термодинамика 1", "Ньютон 1", "Ом закону", "Кулон"], c: 0},
+                {q: "Чыңалууну өлчөөчү курал?", a: ["Амперметр", "Вольтметр", "Омметр", "Ванометр"], c: 1},
+                {q: "Кванттык физика негиздөөчүсү?", a: ["Планк", "Галилей", "Паскаль", "Кюри"], c: 0},
+                {q: "Архимед күчү кайда таасир этет?", a: ["Катуу зат", "Суюктук/Газ", "Вакуум", "Космос"], c: 1}
+            ]},
+            3: { name: "Биология", icon: "🌿", color: "from-green-600 to-emerald-800", list: [
+                {q: "Тирүү организмдин бирдиги?", a: ["Ткань", "Клетка", "Орган", "Дене"], c: 1},
+                {q: "Фотосинтез кайда жүрөт?", a: ["Тамырда", "Жалбыракта", "Гүлдө", "Сөңгөктө"], c: 1},
+                {q: "Адамда канча хромосома бар?", a: ["44", "46", "48", "23"], c: 1},
+                {q: "Кандын кызыл клеткалары?", a: ["Лейкоцит", "Эритроцит", "Тромбоцит", "Плазма"], c: 1},
+                {q: "Жүрөктө канча камера бар?", a: ["2", "3", "4", "5"], c: 2},
+                {q: "Витамин C кайсы жерде көп?", a: ["Нанда", "Лимондо", "Этте", "Сүттө"], c: 1},
+                {q: "ДНКнын түзүлүшү?", a: ["Бир спираль", "Кош спираль", "Түз сызык", "Топ"], c: 1},
+                {q: "Эң чоң сүт эмүүчү?", a: ["Пил", "Көк кит", "Жираф", "Акула"], c: 1},
+                {q: "Бактерияларды изилдөөчү илим?", a: ["Зоология", "Микробиология", "Ботаника", "Генетика"], c: 1},
+                {q: "Адамдын эң чоң органы?", a: ["Боор", "Тери", "Өпкө", "Мээ"], c: 1},
+                {q: "Инсулинди кайсы орган бөлүп чыгарат?", a: ["Боор", "Уйку бези", "Бөйрөк", "Ашказан"], c: 1},
+                {q: "Микология эмнени изилдейт?", a: ["Жаныбарларды", "Козу карындарды", "Өсүмдүктөрдү", "Вирустарды"], c: 1},
+                {q: "Генетиканын атасы ким?", a: ["Дарвин", "Мендель", "Павлов", "Ломоносов"], c: 1},
+                {q: "Сөөктөрдүн биригиши?", a: ["Муун", "Ткань", "Булчуң", "Нерв"], c: 0},
+                {q: "Көздүн түсүн аныктоочу бөлүк?", a: ["Карек", "Мөлтүр кабык", "Ириске", "Сетка"], c: 2},
+                {q: "Эң кичине куш?", a: ["Таранчы", "Колибри", "Кандагай", "Чабалекей"], c: 1},
+                {q: "Омурткасыздарга ким кирет?", a: ["Балык", "Курт-кумурска", "Куш", "Жылан"], c: 1},
+                {q: "Суу өткөрүүчү ткань?", a: ["Ксилема", "Флоэма", "Эпидерма", "Кора"], c: 0},
+                {q: "Эволюция теориясы?", a: ["Ньютон", "Дарвин", "Эйнштейн", "Пастер"], c: 1},
+                {q: "Мээнин бөлүгү?", a: ["Мээче", "Бөйрөк", "Өпкө", "Тамыр"], c: 0}
+            ]},
+            4: { name: "География", icon: "🌍", color: "from-blue-500 to-cyan-700", list: [
+                {q: "Эң чоң океан?", a: ["Атлантика", "Тынч", "Индия", "Түндүк Муз"], c: 1},
+                {q: "Кыргызстандын эң бийик чокусу?", a: ["Ленин", "Жеңиш", "Хан-Тенгри", "Манас"], c: 1},
+                {q: "Дүйнөдөгү эң узун дарыя?", a: ["Амазонка", "Нил", "Миссисипи", "Енисей"], c: 1},
+                {q: "Эң чоң материк?", a: ["Африка", "Евразия", "Америка", "Антарктида"], c: 1},
+                {q: "Кыргызстандын аянты?", a: ["191.5 миң", "199.9 миң", "210 миң", "150 миң"], c: 1},
+                {q: "Эң терең көл?", a: ["Ысык-Көл", "Байкал", "Каспий", "Виктория"], c: 1},
+                {q: "Сахара чөлү кайда?", a: ["Азия", "Африка", "Австралия", "Америка"], c: 1},
+                {q: "Жердин формасы?", a: ["Түз", "Геоид/Шар", "Квадрат", "Үч бурчтук"], c: 1},
+                {q: "Эң кичине материк?", a: ["Европа", "Австралия", "Антарктида", "Түштүк Америка"], c: 1},
+                {q: "Эвересттин бийиктиги?", a: ["7748м", "8848м", "9948м", "6648м"], c: 1},
+                {q: "Кыргызстандын борбору?", a: ["Ош", "Бишкек", "Жалал-Абад", "Нарын"], c: 1},
+                {q: "Жапониянын борбору?", a: ["Сеул", "Токио", "Пекин", "Киото"], c: 1},
+                {q: "Калкы эң көп өлкө?", a: ["АКШ", "Индия", "Кытай", "Орусия"], c: 1},
+                {q: "Эң чоң арал?", a: ["Мадагаскар", "Гренландия", "Исландия", "Ява"], c: 1},
+                {q: "Түндүк уюлдагы жаныбар?", a: ["Пингвин", "Ак аюу", "Пил", "Кенгуру"], c: 1},
+                {q: "Түштүк уюлдагы жаныбар?", a: ["Ак аюу", "Пингвин", "Төө", "Бөрү"], c: 1},
+                {q: "Жердин спутниги?", a: ["Марс", "Ай", "Күн", "Венера"], c: 1},
+                {q: "Кайсы мамлекет эки материкте?", a: ["АКШ", "Орусия", "Кытай", "Бразилия"], c: 1},
+                {q: "Бразилия кайсы материкте?", a: ["Түндүк Америка", "Түштүк Америка", "Африка", "Европа"], c: 1},
+                {q: "Эң ысык материк?", a: ["Австралия", "Африка", "Азия", "Түштүк Америка"], c: 1}
+            ]},
+            5: { name: "Тарых", icon: "🏛️", color: "from-amber-700 to-orange-900", list: [
+                {q: "Кыргыз каганатынын гүлдөгөн доору?", a: ["8-кылым", "9-кылым", "10-кылым", "12-кылым"], c: 1},
+                {q: "Улуу Жибек Жолу кайсы өлкөдөн башталган?", a: ["Индия", "Кытай", "Персия", "Рим"], c: 1},
+                {q: "Экинчи дүйнөлүк согуш качан башталган?", a: ["1914", "1939", "1941", "1945"], c: 1},
+                {q: "Манас эпосунун канча жылдыгы белгиленген?", a: ["500", "1000", "1100", "2000"], c: 1},
+                {q: "Биринчи президент ким?", a: ["Акаев", "Бакиев", "Отунбаева", "Атамбаев"], c: 0},
+                {q: "СССР качан тараган?", a: ["1989", "1991", "1993", "1985"], c: 1},
+                {q: "Пирамидалар кайсы өлкөдө?", a: ["Греция", "Египет", "Мексика", "Италия"], c: 1},
+                {q: "Наполеон кайсы өлкөнүн императору болгон?", a: ["Англия", "Франция", "Германия", "Испания"], c: 1},
+                {q: "Американы ким ачкан?", a: ["Магеллан", "Колумб", "Васко да Гама", "Кук"], c: 1},
+                {q: "Кыргызстандын эгемендүүлүк күнү?", a: ["23-сентябрь", "31-август", "5-май", "7-ноябрь"], c: 1},
+                {q: "Биринчи космонавт?", a: ["Армстронг", "Гагарин", "Леонов", "Терешкова"], c: 1},
+                {q: "Ренессанс доору кайда башталган?", a: ["Франция", "Италия", "Англия", "Германия"], c: 1},
+                {q: "Барсбек каган ким болгон?", a: ["Уйгур каганы", "Кыргыз каганы", "Түрк каганы", "Кытай элчиси"], c: 1},
+                {q: "Чыңгыз хан ким болгон?", a: ["Монгол ханы", "Түрк ханы", "Кытай императору", "Орус князы"], c: 0},
+                {q: "Биринчи дүйнөлүк согуш аяктаган жыл?", a: ["1914", "1918", "1920", "1939"], c: 1},
+                {q: "Кыргыз алфавити латын тилине качан өткөн (биринчи жолу)?", a: ["1924", "1928", "1940", "1991"], c: 1},
+                {q: "Байыркы Грециянын борбору?", a: ["Рим", "Афина", "Спарта", "Троя"], c: 1},
+                {q: "Ленин ким болгон?", a: ["Падыша", "Революционер", "Генерал", "Акын"], c: 1},
+                {q: "Кыргызстандын Гимнинин автору (сөзү)?", a: ["Сыдыков", "Кулуев/Садыков", "Чоротегин", "Токтогул"], c: 1},
+                {q: "Эң байыркы жазуу?", a: ["Иероглиф", "Шынаа жазуу", "Алфавит", "Сүрөт"], c: 1}
+            ]},
+            6: { name: "Англис тили", icon: "🇬🇧", color: "from-red-700 to-blue-800", list: [
+                {q: "I ___ a student.", a: ["is", "am", "are", "be"], c: 1},
+                {q: "Apple сөзүнүн кыргызчасы?", a: ["Алмурут", "Алма", "Өрүк", "Жүзүм"], c: 1},
+                {q: "Book көптүк түрүндө?", a: ["Bookes", "Books", "Bookies", "Beek"], c: 1},
+                {q: "Yesterday I ___ to school.", a: ["go", "went", "gone", "goes"], c: 1},
+                {q: "She ___ breakfast every morning.", a: ["eat", "eats", "eating", "ate"], c: 1},
+                {q: "Translate: Жашыл", a: ["Red", "Green", "Blue", "Yellow"], c: 1},
+                {q: "Opposite of 'Big'?", a: ["Large", "Small", "Tall", "Long"], c: 1},
+                {q: "How ___ you?", a: ["is", "are", "am", "do"], c: 1},
+                {q: "The capital of UK?", a: ["New York", "London", "Paris", "Berlin"], c: 1},
+                {q: "Monday, Tuesday, ___?", a: ["Friday", "Wednesday", "Sunday", "Thursday"], c: 1},
+                {q: "Which one is a verb?", a: ["Happy", "Run", "Beautiful", "Quickly"], c: 1},
+                {q: "A person from USA is...", a: ["English", "American", "British", "Russian"], c: 1},
+                {q: "He is ___ tallest boy.", a: ["a", "the", "an", "some"], c: 1},
+                {q: "Can you help ___?", a: ["I", "me", "my", "mine"], c: 1},
+                {q: "Twelve + Eight = ?", a: ["Eighteen", "Twenty", "Ten", "Fifteen"], c: 1},
+                {q: "Where ___ you live?", a: ["is", "do", "does", "are"], c: 1},
+                {q: "Mother's sister is your...", a: ["Aunt", "Uncle", "Cousin", "Niece"], c: 0},
+                {q: "Wait ___ me.", a: ["to", "for", "on", "at"], c: 1},
+                {q: "Goodbye деген эмне?", a: ["Салам", "Кош кал", "Рахмат", "Кечириңиз"], c: 1},
+                {q: "What time ___ it?", a: ["am", "is", "are", "do"], c: 1}
+            ]},
+            7: { name: "Логика", icon: "🧠", color: "from-purple-700 to-fuchsia-900", list: [
+                {q: "7 уул бар, ар биринин бирден карындашы бар. Канча бала?", a: ["14", "8", "7", "15"], c: 1},
+                {q: "Экинчи келе жатканды ашып өтсөңүз, канчанчы болосуз?", a: ["1", "2", "3", "4"], c: 1},
+                {q: "А тамгасынан башталып Я менен бүткөн сөз?", a: ["Азбука", "Армия", "Акация", "Азия"], c: 1},
+                {q: "Столдо 3 алма бар, 2ни алдыңыз. Сизде канча алма?", a: ["1", "2", "3", "0"], c: 1},
+                {q: "Электр по поезди түштүккө баратат, түтүнү кайда?", a: ["Түндүк", "Түштүк", "Түтүн жок", "Батыш"], c: 2},
+                {q: "Кайсы дөңгөлөк бурулганда айланбайт?", a: ["Оң", "Сол", "Запастагы", "Арткы"], c: 2},
+                {q: "66 санын тескери кылса канчага чоңоёт?", a: ["33", "22", "99", "11"], c: 0},
+                {q: "Канча айда 28 күн бар?", a: ["1", "2", "Бардыгында", "0"], c: 2},
+                {q: "Шам, лампа, меш бар. Биринчи эмнени жагасыз?", a: ["Шам", "Меш", "Ширеңке", "Лампа"], c: 2},
+                {q: "Күнү-түнү басат, бирок ордунан жылбайт?", a: ["Адам", "Саат", "Жол", "Дарыя"], c: 1},
+                {q: "Эң оор: 1кг темирби же 1кг мактабы?", a: ["Темир", "Макта", "Бирдей", "Белгисиз"], c: 2},
+                {q: "Бир үй-бүлөдө 2 ата, 2 уул бар. Жалпы канча киши?", a: ["4", "3", "2", "5"], c: 1},
+                {q: "Кайсы идиштен тамак ичүүгө болбойт?", a: ["Бош", "Алтын", "Чоң", "Жалпак"], c: 0},
+                {q: "Адам 10 күн уктабай кантип жашай алат?", a: ["Мүмкүн эмес", "Түнү уктайт", "Суу ичет", "Ал балык"], c: 1},
+                {q: "Дарыянын эки жээгинде 2 адам турат. Экөө тең өттү. Кантип?", a: ["Башка жээктерде", "Сузуп", "Көпүрө", "Кайык"], c: 0},
+                {q: "Эмне өйдө чыгат, бирок түшпөйт?", a: ["Топ", "Жаш", "Суу", "Адам"], c: 1},
+                {q: "Кандай ташты суудан таппайсың?", a: ["Чоң", "Кургак", "Ысык", "Тегерек"], c: 1},
+                {q: "Атасы менен баласы 5 партия шахмат ойноп, экөө тең 5тен утту. Кантип?", a: ["Башкалар менен", "Тең чыгуу", "Ката", "Бөлүштү"], c: 0},
+                {q: "Төө куш өзүн кушмун дей алабы?", a: ["Ооба", "Жок", "Сүйлөбөйт", "Кээде"], c: 2},
+                {q: "1ден 100гө чейин канча 9 цифрасы бар?", a: ["10", "11", "19", "20"], c: 3}
+            ]}
+        };
+
+        let currentLevel = 'senior';
+        let subjects = seniorData;
+        let players = [];
+        let currentPlayerIdx = 0;
+        let subjectsProgress = {};
+        let usedQuestions = {};
+        const TIME_LIMIT = 60;
+        let timerInterval;
+
+        function setGameLevel(lvl) {
+            currentLevel = lvl;
+            subjects = lvl === 'junior' ? juniorData : seniorData;
+            document.querySelectorAll('#lvlJunior, #lvlSenior').forEach(b => b.className = 'p-4 rounded-2xl border-2 border-slate-700 bg-slate-800/50 transition-all');
+            document.getElementById(lvl === 'junior' ? 'lvlJunior' : 'lvlSenior').className = 'p-4 rounded-2xl border-2 border-blue-500 bg-blue-500/20 transition-all';
+            document.getElementById('badgeLevel').innerText = lvl.toUpperCase();
+        }
+
+        function createPlayerInputs(n) {
+            const container = document.getElementById('playerInputs');
+            container.innerHTML = '';
+            document.querySelectorAll('.p-btn').forEach((b, i) => b.className = (i+1 === n) ? 'p-btn w-12 h-12 rounded-xl bg-blue-600 border border-blue-500 font-black' : 'p-btn w-12 h-12 rounded-xl bg-slate-800 border border-white/10 font-black');
+            for(let i=1; i<=n; i++) {
+                container.innerHTML += `<input type="text" id="pName${i}" placeholder="${i}-оюнчунун аты" class="w-full p-4 rounded-xl bg-slate-900 border border-white/10 outline-none focus:border-blue-500 font-bold text-white mb-2">`;
+            }
+        }
+
+        function startGame() {
+            players = [];
+            const inputs = document.querySelectorAll('#playerInputs input');
+            inputs.forEach((inp, i) => players.push({ name: inp.value || `${i+1}-Оюнчу`, score: 0 }));
+            for(let key in subjects) {
+                subjectsProgress[key] = 0;
+                usedQuestions[key] = [];
+            }
+            document.getElementById('setupScreen').classList.add('hidden');
+            document.getElementById('gameUI').classList.remove('hidden');
+            renderSubjects();
+            updateDashboard();
+        }
+
+        function updateDashboard() {
+            const board = document.getElementById('scoreboard');
+            board.innerHTML = '';
+            players.forEach((p, i) => {
+                const isActive = i === currentPlayerIdx;
+                board.innerHTML += `
+                    <div class="cyber-card px-6 py-3 rounded-xl min-w-[140px] transition-all ${isActive ? 'active-player-glow' : 'opacity-60'}">
+                        <p class="text-[10px] font-bold uppercase ${isActive ? 'text-blue-400' : 'text-gray-500'}">${p.name}</p>
+                        <p class="text-xl font-black">${p.score} <span class="text-[10px] text-gray-500">УПАЙ</span></p>
+                    </div>`;
+            });
+            document.getElementById('activePlayerName').innerText = players[currentPlayerIdx].name;
+        }
+
+        function renderSubjects() {
+            const grid = document.getElementById('subjectsGrid');
+            grid.innerHTML = '';
+            for(let key in subjects) {
+                const sub = subjects[key];
+                const isDone = subjectsProgress[key] >= sub.list.length;
+                grid.innerHTML += `
+                    <button onclick="openQuestion(${key})" ${isDone ? 'disabled' : ''} 
+                        class="p-6 rounded-[1.5rem] h-40 flex flex-col justify-between transition-all bg-gradient-to-br ${sub.color} ${isDone ? 'opacity-20 grayscale cursor-not-allowed' : 'hover:scale-105'}">
+                        <span class="text-3xl">${sub.icon}</span>
+                        <div class="text-left">
+                            <p class="font-black text-lg leading-tight">${sub.name}</p>
+                            <p class="text-[10px] opacity-70 uppercase font-bold">${subjectsProgress[key]} / ${sub.list.length}</p>
+                        </div>
+                    </button>`;
+            }
+        }
+
+        function openQuestion(subId) {
+            const sub = subjects[subId];
+            const qIdx = subjectsProgress[subId];
+            const q = sub.list[qIdx];
+            
+            document.getElementById('qCategory').innerText = sub.name;
+            document.getElementById('qText').innerText = q.q;
+            const options = document.getElementById('qOptions');
+            options.innerHTML = '';
+            q.a.forEach((opt, i) => {
+                options.innerHTML += `<button onclick="checkAnswer(${subId}, ${i})" class="opt-btn p-5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all font-bold text-left">${opt}</button>`;
+            });
+
+            document.getElementById('questModal').classList.remove('hidden');
+            startTimer(subId);
+        }
+
+        function startTimer(subId) {
+            let timeLeft = TIME_LIMIT;
+            const timerEl = document.getElementById('qTimer');
+            const progress = document.getElementById('timerProgress');
+            timerEl.innerText = timeLeft;
+            progress.style.width = '100%';
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerEl.innerText = timeLeft;
+                progress.style.width = (timeLeft/TIME_LIMIT*100) + '%';
+                if(timeLeft <= 10) timerEl.classList.add('timer-low');
+                if(timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    checkAnswer(subId, -1);
+                }
+            }, 1000);
+        }
+
+        function checkAnswer(subId, ansIdx) {
+            clearInterval(timerInterval);
+            const q = subjects[subId].list[subjectsProgress[subId]];
+            const btns = document.querySelectorAll('.opt-btn');
+            
+            if(ansIdx === q.c) {
+                players[currentPlayerIdx].score += 10;
+                if(ansIdx !== -1) btns[ansIdx].classList.add('correct-ans');
+            } else {
+                if(ansIdx !== -1) btns[ansIdx].classList.add('wrong-ans');
+                if(btns[q.c]) btns[q.c].classList.add('correct-ans');
+            }
+
+            setTimeout(() => {
+                document.getElementById('questModal').classList.add('hidden');
+                document.getElementById('qTimer').classList.remove('timer-low');
+                subjectsProgress[subId]++;
+                currentPlayerIdx = (currentPlayerIdx + 1) % players.length;
+                
+                updateDashboard();
+                renderSubjects();
+                checkGameOver();
+            }, 1500);
+        }
+
+        function checkGameOver() {
+            let totalRemaining = 0;
+            for(let key in subjects) {
+                totalRemaining += (subjects[key].list.length - subjectsProgress[key]);
+            }
+            if(totalRemaining === 0) {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            document.getElementById('resultModal').classList.remove('hidden');
+            const rankings = document.getElementById('finalRankings');
+            const sorted = [...players].sort((a,b) => b.score - a.score);
+            rankings.innerHTML = sorted.map((p, i) => `
+                <div class="cyber-card p-5 rounded-2xl flex justify-between items-center ${i === 0 ? 'border-yellow-500 border-2' : ''}">
+                    <span class="font-black text-xl">${i+1}. ${p.name}</span>
+                    <span class="text-2xl font-black text-blue-500">${p.score}</span>
+                </div>`).join('');
+        }
+
+        window.onload = () => {
+            setGameLevel('senior');
+            createPlayerInputs(1);
+        };
+    </script>
+</body>
+</html>
